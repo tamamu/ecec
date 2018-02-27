@@ -11,6 +11,7 @@ import Html.Styled.Events as Events exposing (on, onWithOptions, onClick, onFocu
 import Char exposing (fromCode)
 import Json.Decode as Json
 import String.Extra exposing (toCodePoints, fromCodePoints)
+import LispHighlight exposing (highlight)
 
 {-| Event property decoder
 -}
@@ -268,7 +269,8 @@ view model =
       rangeLeftText = fromCodePoints <| List.take rangeLeft codePoints
       rangeInnerText = fromCodePoints <| List.take rangeLength <| List.drop rangeLeft codePoints
   in
-  div [ css [ margin (px 32) ] ]
+  div [ css [ margin (px 32)
+            , fontFamily monospace ] ]
     [ textarea [ onPaste Insert
                , onKeyDown KeyDown
                , onCompositionEnd Insert
@@ -289,7 +291,7 @@ view model =
                ] []
     , div [ css [ display block
                 , border3 (px 1) solid black
-                , width (px 200)
+                , width (Css.em 30)
                 , height (Css.em 1)
                 , cursor text_
                 ]
@@ -313,7 +315,7 @@ view model =
                      , property "animation" "blink .5s alternate infinite ease-in" ] ]
           [ text "|" ]
         ]
-      , text model.content
+      , fromUnstyled (highlight model.content)
       ]
     , text <| toString model.lastKey
     , text ","

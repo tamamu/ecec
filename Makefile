@@ -1,4 +1,4 @@
 all: main.js
 
-main.js: Main.elm
+main.js: *.elm
 	elm-make Main.elm --output=main.js
