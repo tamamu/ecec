@@ -128,10 +128,13 @@ type Msg
     | Insert String
     | Backspace
     | SetText String
+    | NewLine
     | KeyDown String Bool
     | KeyUp String
     | MoveLeft
     | MoveRight
+    | MoveUp
+    | MoveDown
 
 
 moveCaretLeft : CaretPosition -> CaretPosition
@@ -142,6 +145,16 @@ moveCaretLeft pos =
 moveCaretRight : CaretPosition -> Int -> CaretPosition
 moveCaretRight pos max =
     { pos | col = min max (pos.col + 1) }
+
+
+moveCaretUp : CaretPosition -> CaretPosition
+moveCaretUp pos =
+    { pos | row = max 0 (pos.row - 1) }
+
+
+moveCaretDown : CaretPosition -> Int -> CaretPosition
+moveCaretDown pos max =
+    { pos | row = min max (pos.row + 1) }
 
 
 charsLength : String -> Int
@@ -235,6 +248,33 @@ update msg model =
             }
                 ! []
 
+        NewLine ->
+            let
+                currentLine =
+                    toCodePoints <| Maybe.withDefault "" <| List.Extra.getAt model.caretPos.row model.content
+
+                left : String
+                left =
+                    fromCodePoints <| List.take model.caretPos.col currentLine
+
+                right : String
+                right =
+                    fromCodePoints <| List.drop model.caretPos.col currentLine
+
+                top : List String
+                top =
+                    List.take model.caretPos.row model.content
+
+                bottom : List String
+                bottom =
+                    List.drop (model.caretPos.row + 1) model.content
+            in
+            { model
+                | content = List.concat [ top, [ left, right ], bottom ]
+                , caretPos = { caretPos | col = 0, row = model.caretPos.row + 1 }
+            }
+                ! []
+
         MoveLeft ->
             let
                 caretPos =
@@ -263,6 +303,28 @@ update msg model =
             }
                 ! []
 
+        MoveUp ->
+            let
+                caretPos =
+                    moveCaretUp model.caretPos
+            in
+            { model
+                | caretPos = caretPos
+                , isSelected = model.isSelected
+            }
+                ! []
+
+        MoveDown ->
+            let
+                caretPos =
+                    moveCaretDown model.caretPos (List.length model.content - 1)
+            in
+            { model
+                | caretPos = caretPos
+                , isSelected = model.isSelected
+            }
+                ! []
+
         KeyDown key shift ->
             case key of
                 "Backspace" ->
@@ -275,7 +337,7 @@ update msg model =
                     model ! []
 
                 "Enter" ->
-                    model ! []
+                    update NewLine model
 
                 "Control" ->
                     model ! []
@@ -340,6 +402,12 @@ update msg model =
                             }
                     else
                         update MoveRight model
+
+                "ArrowUp" ->
+                    update MoveUp model
+
+                "ArrowDown" ->
+                    update MoveDown model
 
                 _ ->
                     if String.length key == 1 then
@@ -421,7 +489,7 @@ view model =
                 [ display block
                 , border3 (px 1) solid black
                 , width (Css.em 30)
-                , height (Css.em 1)
+                , height (Css.em <| toFloat <| List.length model.content)
                 , cursor text_
                 ]
             , onClick (FocusOn model.id)
@@ -432,28 +500,53 @@ view model =
                     , rangeDisplay
                     ]
                 ]
-                [ span [ css [ visibility hidden ] ]
+                [ span
+                    [ css
+                        [ visibility hidden
+                        , whiteSpace Css.pre
+                        ]
+                    ]
                     [ text rangeLeftText ]
                 , span
                     [ css
                         [ opacity (Css.num 0.5)
                         , backgroundColor gray
+                        , whiteSpace Css.pre
                         ]
                     ]
                     [ text rangeInnerText ]
                 ]
             , span [ css [ position absolute ] ]
-                [ span [ css [ visibility hidden ] ]
+                [ span
+                    [ css
+                        [ visibility hidden
+                        , whiteSpace Css.pre
+                        ]
+                    ]
                     [ text caretText ]
                 , span
                     [ css
-                        [ caretDisplay
+                        [ display inlineBlock
+                        , caretDisplay
                         , property "animation" "blink .5s alternate infinite ease-in"
+                        , transform (translateY (Css.em <| toFloat model.caretPos.row))
                         ]
                     ]
                     [ text "|" ]
                 ]
-            , div [] <| List.map (\s -> fromUnstyled (highlight s)) model.content
+            , div [] <|
+                List.map
+                    (\s ->
+                        div
+                            [ css
+                                [ display block
+                                , width (Css.em 30)
+                                , height (Css.em 1)
+                                ]
+                            ]
+                            [ fromUnstyled (highlight s) ]
+                    )
+                    model.content
             ]
         , text <| toString model.lastKey
         , text ","
