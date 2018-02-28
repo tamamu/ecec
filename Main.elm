@@ -235,11 +235,37 @@ update msg model =
                     ! []
 
         Backspace ->
-            { model
-                | content = updateContent model.content caretPos.row <| stringReplace "" (model.caretPos.col - 1) model.caretPos.col
-                , caretPos = moveCaretLeft model.caretPos
-            }
-                ! []
+            if model.caretPos.col == 0 && model.caretPos.row > 0 then
+                let
+                    prevLine =
+                        toCodePoints <| Maybe.withDefault "" <| List.Extra.getAt (model.caretPos.row - 1) model.content
+
+                    currentLine =
+                        toCodePoints <| Maybe.withDefault "" <| List.Extra.getAt model.caretPos.row model.content
+
+                    right =
+                        List.drop model.caretPos.col currentLine
+
+                    line =
+                        List.concat [ prevLine, right ]
+
+                    top =
+                        List.take (model.caretPos.row - 1) model.content
+
+                    bottom =
+                        List.drop (model.caretPos.row + 1) model.content
+                in
+                { model
+                    | content = List.concat [ top, [ fromCodePoints line ], bottom ]
+                    , caretPos = { caretPos | col = List.length line, row = model.caretPos.row - 1 }
+                }
+                    ! []
+            else
+                { model
+                    | content = updateContent model.content caretPos.row <| stringReplace "" (model.caretPos.col - 1) model.caretPos.col
+                    , caretPos = moveCaretLeft model.caretPos
+                }
+                    ! []
 
         SetText text ->
             { model
