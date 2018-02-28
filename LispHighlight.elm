@@ -19,7 +19,7 @@ type Token
 
 symbolChar : Char -> Bool
 symbolChar c =
-    String.contains (String.fromChar c) "abcdefghijklmnopqrstuvwxyz1234567890!#$%&@^|/:[]{}?-=_*+."
+    String.contains (String.fromChar c) "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!#$%&@^|/:[]{}?-=_*+."
 
 
 exceptDelim : Char -> Bool
