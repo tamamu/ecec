@@ -11,6 +11,7 @@ import Html.Styled.Events as Events exposing (on, onWithOptions, onClick, onFocu
 import Char exposing (fromCode)
 import Json.Decode as Json
 import String.Extra exposing (toCodePoints, fromCodePoints)
+import List.Extra exposing (getAt)
 import LispHighlight exposing (highlight)
 
 {-| Event property decoder
@@ -83,7 +84,7 @@ onKeyDown handler =
 type alias Model =
   { id : String
   , isFocused : Bool
-  , content : String
+  , content : List String
   , lastKey : String
   , caretPos : CaretPosition
   , isSelected : Bool
@@ -96,7 +97,7 @@ model : Model
 model =
   { id = "editor"
   , isFocused = False
-  , content = ""
+  , content = [""]
   , lastKey = ""
   , caretPos = { col = 0 , row = 0 }
   , isSelected = False
@@ -137,6 +138,10 @@ stringReplace insert start end string =
   in
   fromCodePoints (List.take start chars) ++ insert ++ fromCodePoints (List.drop end chars)
 
+updateContent : List String -> Int -> (String -> String) -> List String
+updateContent src row fun =
+  List.map (\t -> let (i, s) = t in if i == row then fun s else s) <| List.indexedMap (,) src
+
 update : Msg -> Model -> ( Model , Cmd Msg )
 update msg model =
   let
@@ -162,24 +167,24 @@ update msg model =
             rangeRight = max model.rangeFrom model.caretPos.col
         in
         { model |
-          content = stringReplace data rangeLeft rangeRight model.content
+          content = updateContent model.content caretPos.row <| stringReplace data rangeLeft rangeRight
         , caretPos = { caretPos | col = rangeLeft }
         , isSelected = False
         } ! []
       else
         { model |
-          content = stringReplace data model.caretPos.col model.caretPos.col model.content
+          content = updateContent model.content caretPos.row <| stringReplace data model.caretPos.col model.caretPos.col
         , caretPos = { caretPos | col = model.caretPos.col + charsLength data }
         } ! []
     Backspace ->
       { model |
-        content = stringReplace "" (model.caretPos.col - 1) model.caretPos.col model.content
+        content = updateContent model.content caretPos.row <| stringReplace "" (model.caretPos.col - 1) model.caretPos.col
       , caretPos = moveCaretLeft model.caretPos
       } ! []
     SetText text ->
       { model |
-        content = String.concat [model.content , text]
-      , caretPos = { caretPos | col = model.caretPos.col + (String.length text - String.length model.content) }
+        content = updateContent model.content caretPos.row <| \s -> String.concat [s , text]
+      , caretPos = { caretPos | col = 0, row = 0 }
       } ! []
     MoveLeft ->
       let
@@ -192,7 +197,7 @@ update msg model =
       } ! []
     MoveRight ->
       let
-          caretPos = moveCaretRight model.caretPos (charsLength model.content)
+          caretPos = moveCaretRight model.caretPos (charsLength <| Maybe.withDefault "" <| List.Extra.getAt model.caretPos.row model.content)
           rangeLength = abs (caretPos.col - model.rangeFrom)
       in
       { model |
@@ -273,7 +278,8 @@ view model =
           visibility visible
         else
           visibility hidden
-      codePoints = toCodePoints model.content
+      currentLine = Maybe.withDefault "" <| List.Extra.getAt model.caretPos.row model.content
+      codePoints = toCodePoints currentLine
       rangeLeft = min model.rangeFrom model.caretPos.col
       rangeLength = abs (model.rangeFrom - model.caretPos.col)
       caretText = fromCodePoints <| List.take model.caretPos.col codePoints
@@ -326,7 +332,7 @@ view model =
                      , property "animation" "blink .5s alternate infinite ease-in" ] ]
           [ text "|" ]
         ]
-      , fromUnstyled (highlight model.content)
+      , div [] <| List.map (\s -> fromUnstyled (highlight s)) model.content
       ]
     , text <| toString model.lastKey
     , text ","
