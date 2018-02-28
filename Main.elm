@@ -303,8 +303,11 @@ update msg model =
 
         MoveLeft ->
             let
+                currentLine =
+                    toCodePoints <| Maybe.withDefault "" <| List.Extra.getAt model.caretPos.row model.content
+
                 caretPos =
-                    moveCaretLeft model.caretPos
+                    moveCaretLeft { row = model.caretPos.row, col = min model.caretPos.col (List.length currentLine) }
 
                 rangeLength =
                     abs (caretPos.col - model.rangeFrom)
