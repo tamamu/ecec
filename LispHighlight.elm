@@ -1,5 +1,6 @@
 module LispHighlight exposing (highlight)
 
+import Char exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Parser exposing ((|.), (|=), Count(..), Parser, end, fail, float, ignore, keep, keyword, map, oneOf, oneOrMore, repeat, run, source, succeed, symbol, zeroOrMore)
@@ -11,7 +12,7 @@ type Token
     | LeftParen
     | RightParen
     | Symbol String
-    | Number Float
+    | Number String
     | String String
     | Keyword String
     | Other String
@@ -66,10 +67,55 @@ parseSymbol =
         |= keep oneOrMore symbolChar
 
 
+parseNumber1 : Parser String
+parseNumber1 =
+    Parser.source <|
+        ignore oneOrMore Char.isDigit
+            |. ignore (Exactly 1) (\c -> c == 'e')
+            |. ignore oneOrMore Char.isDigit
+
+
+parseNumber2 : Parser String
+parseNumber2 =
+    Parser.source <|
+        ignore oneOrMore Char.isDigit
+            |. ignore (Exactly 1) (\c -> c == '.')
+            |. ignore zeroOrMore Char.isDigit
+            |. ignore (Exactly 1) (\c -> c == 'e')
+            |. ignore oneOrMore Char.isDigit
+
+
+parseNumber3 : Parser String
+parseNumber3 =
+    Parser.source <|
+        ignore oneOrMore Char.isDigit
+            |. ignore (Exactly 1) (\c -> c == '.')
+            |. ignore zeroOrMore Char.isDigit
+
+
+parseNumber4 : Parser String
+parseNumber4 =
+    Parser.source <|
+        ignore oneOrMore Char.isDigit
+
+
+parseNumber5 : Parser String
+parseNumber5 =
+    Parser.source <|
+        ignore (Exactly 1) (\c -> c == '.')
+            |. ignore oneOrMore Char.isDigit
+
+
 parseNumber : Parser Token
 parseNumber =
-    succeed Number
-        |= float
+    Parser.map Number <|
+        oneOf
+            [ parseNumber1
+            , parseNumber2
+            , parseNumber3
+            , parseNumber4
+            , parseNumber5
+            ]
 
 
 tokenize : Parser Token
@@ -143,7 +189,7 @@ tokenToHtml token =
                     , ( "color", "orange" )
                     ]
                 ]
-                [ text <| toString num ]
+                [ text num ]
 
         String content ->
             span
