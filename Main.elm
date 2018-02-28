@@ -510,69 +510,93 @@ view model =
                 ]
             ]
             []
-        , div
-            [ css
-                [ display block
-                , border3 (px 1) solid black
-                , width (Css.em 30)
-                , height (Css.em <| toFloat <| List.length model.content)
-                , cursor text_
-                ]
-            , onClick (FocusOn model.id)
-            ]
-            [ span
+        , div [ css [ displayFlex ] ]
+            [ div
                 [ css
-                    [ position absolute
-                    , rangeDisplay
+                    [ backgroundColor gray
+                    , border3 (px 1) solid black
+                    , borderRight (px 0)
+                    , paddingRight (px 10)
                     ]
                 ]
-                [ span
-                    [ css
-                        [ visibility hidden
-                        , whiteSpace Css.pre
-                        ]
-                    ]
-                    [ text rangeLeftText ]
-                , span
-                    [ css
-                        [ opacity (Css.num 0.5)
-                        , backgroundColor gray
-                        , whiteSpace Css.pre
-                        ]
-                    ]
-                    [ text rangeInnerText ]
-                ]
-            , span [ css [ position absolute ] ]
-                [ span
-                    [ css
-                        [ visibility hidden
-                        , whiteSpace Css.pre
-                        ]
-                    ]
-                    [ text caretText ]
-                , span
-                    [ css
-                        [ display inlineBlock
-                        , caretDisplay
-                        , property "animation" "blink .5s alternate infinite ease-in"
-                        , transform (translateY (Css.em <| toFloat model.caretPos.row))
-                        ]
-                    ]
-                    [ text "|" ]
-                ]
-            , div [] <|
+              <|
                 List.map
-                    (\s ->
-                        div
+                    (\i ->
+                        span
                             [ css
                                 [ display block
-                                , width (Css.em 30)
                                 , height (Css.em 1)
                                 ]
                             ]
-                            [ fromUnstyled (highlight s) ]
+                            [ text <| toString i ]
                     )
-                    model.content
+                <|
+                    List.range 1 <|
+                        List.length model.content
+            , div
+                [ css
+                    [ display block
+                    , border3 (px 1) solid black
+                    , width (Css.em 30)
+                    , height (Css.em <| toFloat <| List.length model.content)
+                    , cursor text_
+                    ]
+                , onClick (FocusOn model.id)
+                ]
+                [ span
+                    [ css
+                        [ position absolute
+                        , rangeDisplay
+                        ]
+                    ]
+                    [ span
+                        [ css
+                            [ visibility hidden
+                            , whiteSpace Css.pre
+                            ]
+                        ]
+                        [ text rangeLeftText ]
+                    , span
+                        [ css
+                            [ opacity (Css.num 0.5)
+                            , backgroundColor gray
+                            , whiteSpace Css.pre
+                            ]
+                        ]
+                        [ text rangeInnerText ]
+                    ]
+                , span [ css [ position absolute ] ]
+                    [ span
+                        [ css
+                            [ visibility hidden
+                            , whiteSpace Css.pre
+                            ]
+                        ]
+                        [ text caretText ]
+                    , span
+                        [ css
+                            [ display inlineBlock
+                            , caretDisplay
+                            , property "animation" "blink .5s alternate infinite ease-in"
+                            , transform (translateY (Css.em <| toFloat model.caretPos.row))
+                            ]
+                        ]
+                        [ text "|" ]
+                    ]
+                , div [] <|
+                    List.map
+                        (\s ->
+                            div
+                                [ css
+                                    [ display block
+                                    , width (Css.em 30)
+                                    , height (Css.em 1)
+                                    ]
+                                ]
+                                [ fromUnstyled (highlight s) ]
+                        )
+                        model.content
+                ]
             ]
         , text <| toString model.lastKey
         , text ","
