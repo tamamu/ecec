@@ -85,11 +85,12 @@ type alias Model =
   , isFocused : Bool
   , content : String
   , lastKey : String
-  , caretColumn : Int
-  , caretRow : Int
+  , caretPos : CaretPosition
   , isSelected : Bool
   , rangeFrom : Int
   }
+
+type alias CaretPosition = { col : Int , row : Int }
 
 model : Model
 model =
@@ -97,8 +98,7 @@ model =
   , isFocused = False
   , content = ""
   , lastKey = ""
-  , caretColumn = 0
-  , caretRow = 0
+  , caretPos = { col = 0 , row = 0 }
   , isSelected = False
   , rangeFrom = 0
   }
@@ -118,13 +118,13 @@ type Msg
   | MoveLeft
   | MoveRight
 
-moveCaretLeft : Int -> Int
+moveCaretLeft : CaretPosition -> CaretPosition
 moveCaretLeft pos =
-  max 0 (pos - 1)
+  { pos | col = max 0 (pos.col - 1) }
 
-moveCaretRight : Int -> Int -> Int
+moveCaretRight : CaretPosition -> Int -> CaretPosition
 moveCaretRight pos max =
-  min max (pos + 1)
+  { pos | col = min max (pos.col + 1) }
 
 charsLength : String -> Int
 charsLength string =
@@ -139,6 +139,9 @@ stringReplace insert start end string =
 
 update : Msg -> Model -> ( Model , Cmd Msg )
 update msg model =
+  let
+      caretPos = model.caretPos
+  in
   case msg of
     FocusOn id ->
       model ! [ Task.attempt FocusResult (Dom.focus id) ]
@@ -155,37 +158,45 @@ update msg model =
     Insert data ->
       if model.isSelected then
         let
-            rangeLeft = min model.rangeFrom model.caretColumn
-            rangeRight = max model.rangeFrom model.caretColumn
+            rangeLeft = min model.rangeFrom model.caretPos.col
+            rangeRight = max model.rangeFrom model.caretPos.col
         in
-        { model | content = stringReplace data rangeLeft rangeRight model.content
-        , caretColumn = rangeLeft
+        { model |
+          content = stringReplace data rangeLeft rangeRight model.content
+        , caretPos = { caretPos | col = rangeLeft }
         , isSelected = False
         } ! []
       else
-        { model | content = stringReplace data model.caretColumn model.caretColumn model.content
-        , caretColumn = model.caretColumn + charsLength data
+        { model |
+          content = stringReplace data model.caretPos.col model.caretPos.col model.content
+        , caretPos = { caretPos | col = model.caretPos.col + charsLength data }
         } ! []
     Backspace ->
-      { model | content = stringReplace "" (model.caretColumn - 1) model.caretColumn model.content
-      , caretColumn = moveCaretLeft model.caretColumn} ! []
+      { model |
+        content = stringReplace "" (model.caretPos.col - 1) model.caretPos.col model.content
+      , caretPos = moveCaretLeft model.caretPos
+      } ! []
     SetText text ->
-      { model | content = String.concat [model.content , text]
-      , caretColumn = model.caretColumn + (String.length text - String.length model.content)} ! []
+      { model |
+        content = String.concat [model.content , text]
+      , caretPos = { caretPos | col = model.caretPos.col + (String.length text - String.length model.content) }
+      } ! []
     MoveLeft ->
       let
-          caretColumn = moveCaretLeft model.caretColumn
-          rangeLength = abs (caretColumn - model.rangeFrom)
+          caretPos = moveCaretLeft model.caretPos
+          rangeLength = abs (caretPos.col - model.rangeFrom)
       in
-      { model | caretColumn = caretColumn
+      { model |
+        caretPos = caretPos
       , isSelected = model.isSelected && rangeLength > 0
       } ! []
     MoveRight ->
       let
-          caretColumn = moveCaretRight model.caretColumn (charsLength model.content)
-          rangeLength = abs (caretColumn - model.rangeFrom)
+          caretPos = moveCaretRight model.caretPos (charsLength model.content)
+          rangeLength = abs (caretPos.col - model.rangeFrom)
       in
-      { model | caretColumn = caretColumn
+      { model |
+        caretPos = caretPos
       , isSelected = model.isSelected && rangeLength > 0
       } ! []
     KeyDown key shift ->
@@ -205,37 +216,37 @@ update msg model =
         "NonConvert" -> model ! []
         "ArrowLeft" ->
           let
-              rangeLength = abs (model.rangeFrom - model.caretColumn)
+              rangeLength = abs (model.rangeFrom - model.caretPos.col)
           in
           if shift then
             if model.isSelected then
               update MoveLeft model
           else
               update MoveLeft { model | isSelected = True
-                              , rangeFrom = model.caretColumn
+                              , rangeFrom = model.caretPos.col
                               }
           else
             if model.isSelected then
               update MoveLeft { model | isSelected = False
-                              , caretColumn = (min model.rangeFrom model.caretColumn) + 1
+                              , caretPos = { caretPos | col = (min model.rangeFrom model.caretPos.col) + 1 }
                               }
             else
               update MoveLeft model
         "ArrowRight" ->
           let
-              rangeLength = abs (model.rangeFrom - model.caretColumn)
+              rangeLength = abs (model.rangeFrom - model.caretPos.col)
           in
           if shift then
             if model.isSelected then
               update MoveRight model
           else
               update MoveRight { model | isSelected = True
-                               , rangeFrom = model.caretColumn
+                               , rangeFrom = model.caretPos.col
                                }
           else
             if model.isSelected then
               update MoveRight { model | isSelected = False
-                               , caretColumn = (max model.rangeFrom model.caretColumn) - 1
+                               , caretPos = { caretPos | col = (max model.rangeFrom model.caretPos.col) - 1 }
                                }
             else
               update MoveRight model
@@ -263,9 +274,9 @@ view model =
         else
           visibility hidden
       codePoints = toCodePoints model.content
-      rangeLeft = min model.rangeFrom model.caretColumn
-      rangeLength = abs (model.rangeFrom - model.caretColumn)
-      caretText = fromCodePoints <| List.take model.caretColumn codePoints
+      rangeLeft = min model.rangeFrom model.caretPos.col
+      rangeLength = abs (model.rangeFrom - model.caretPos.col)
+      caretText = fromCodePoints <| List.take model.caretPos.col codePoints
       rangeLeftText = fromCodePoints <| List.take rangeLeft codePoints
       rangeInnerText = fromCodePoints <| List.take rangeLength <| List.drop rangeLeft codePoints
   in
@@ -319,7 +330,7 @@ view model =
       ]
     , text <| toString model.lastKey
     , text ","
-    , text <| toString model.caretColumn
+    , text <| toString model.caretPos
     ]
 
 
