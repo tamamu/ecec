@@ -3,7 +3,7 @@ module LispHighlight exposing (highlight)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Parser exposing (Parser, run, map, (|=), (|.), oneOf, succeed, fail, float, symbol, keyword, ignore, keep, repeat, zeroOrMore, oneOrMore)
+import Parser exposing (Parser, run, map, (|=), (|.), oneOf, succeed, fail, float, end, symbol, keyword, ignore, keep, repeat, zeroOrMore, oneOrMore, Count(..), source)
 import Parser.LanguageKit exposing (whitespace, LineComment(..), MultiComment(..))
 
 type Token =
@@ -23,15 +23,26 @@ exceptDelim : Char -> Bool
 exceptDelim c =
   not (String.contains (String.fromChar c) "(), \t\n':;")
 
-exceptDoubleQuote : Char -> Bool
-exceptDoubleQuote c =
-  not (String.contains (String.fromChar c) "\"")
+parseExceptDoubleQuote : Parser String
+parseExceptDoubleQuote =
+        keep (Exactly 1) (\c -> not (String.contains (String.fromChar c) "\""))
+
+parseEscapedChar : Parser String
+parseEscapedChar =
+  Parser.source <|
+    ignore (Exactly 1) (\c -> c == '\\')
+      |. ignore (Exactly 1) (\c -> True)
+
+parseStringChar : Parser String
+parseStringChar =
+  oneOf
+    [ parseEscapedChar , parseExceptDoubleQuote ]
 
 parseString : Parser Token
 parseString =
   succeed String
         |. symbol "\""
-        |=  keep zeroOrMore exceptDoubleQuote
+        |= Parser.map String.concat (repeat zeroOrMore parseStringChar)
         |. symbol "\""
 
 parseKeyword : Parser Token
@@ -60,9 +71,9 @@ tokenize =
           |. symbol "("
         , succeed RightParen
           |. symbol ")"
-        , parseNumber
         , parseString
         , parseKeyword
+        , parseNumber
         , parseSymbol
         ]
 
@@ -104,5 +115,5 @@ highlight src =
       span []
       (List.map tokenToHtml tokens)
     Err _ ->
-      text "Error"
+      text src
 
