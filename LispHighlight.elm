@@ -7,13 +7,14 @@ import Parser.LanguageKit exposing (LineComment(..), MultiComment(..), whitespac
 
 
 type Token
-    = Space
+    = Space String
     | LeftParen
     | RightParen
     | Symbol String
     | Number Float
     | String String
     | Keyword String
+    | Other String
 
 
 symbolChar : Char -> Bool
@@ -76,7 +77,7 @@ tokenize =
     oneOf
         [ succeed Space
             --|. (whitespace { allowTabs = True , lineComment = LineComment ";" , multiComment = NestableComment "#|" "|#" })
-            |. ignore oneOrMore (\c -> c == ' ')
+            |= keep oneOrMore (\c -> c == ' ')
         , succeed LeftParen
             |. symbol "("
         , succeed RightParen
@@ -85,6 +86,8 @@ tokenize =
         , parseKeyword
         , parseNumber
         , parseSymbol
+        , succeed Other
+            |= keep oneOrMore (\c -> True)
         ]
 
 
@@ -95,33 +98,92 @@ tokenizeSequence =
 
 tokenToHtml : Token -> Html msg
 tokenToHtml token =
+    let
+        display =
+            ( "display", "inline" )
+
+        pre =
+            ( "white-space", "pre" )
+    in
     case token of
-        Space ->
-            text " "
+        Space content ->
+            span
+                [ style
+                    [ display
+                    , pre
+                    ]
+                ]
+                [ text content ]
 
         LeftParen ->
-            span [ style [ ( "color", "blue" ) ] ]
+            span
+                [ style
+                    [ display
+                    , pre
+                    , ( "color", "blue" )
+                    ]
+                ]
                 [ text "(" ]
 
         RightParen ->
-            span [ style [ ( "color", "blue" ) ] ]
+            span
+                [ style
+                    [ display
+                    , pre
+                    , ( "color", "blue" )
+                    ]
+                ]
                 [ text ")" ]
 
         Number num ->
-            span [ style [ ( "color", "orange" ) ] ]
+            span
+                [ style
+                    [ display
+                    , pre
+                    , ( "color", "orange" )
+                    ]
+                ]
                 [ text <| toString num ]
 
         String content ->
-            span [ style [ ( "color", "green" ) ] ]
+            span
+                [ style
+                    [ display
+                    , pre
+                    , ( "color", "green" )
+                    ]
+                ]
                 [ text ("\"" ++ content ++ "\"") ]
 
         Keyword name ->
-            span [ style [ ( "color", "yellow" ) ] ]
+            span
+                [ style
+                    [ display
+                    , pre
+                    , ( "color", "yellow" )
+                    ]
+                ]
                 [ text (":" ++ name) ]
 
         Symbol name ->
-            span [ style [ ( "color", "black" ) ] ]
+            span
+                [ style
+                    [ display
+                    , pre
+                    , ( "color", "black" )
+                    ]
+                ]
                 [ text name ]
+
+        Other content ->
+            span
+                [ style
+                    [ display
+                    , pre
+                    , ( "background-color", "red" )
+                    ]
+                ]
+                [ text content ]
 
 
 highlight : String -> Html msg
