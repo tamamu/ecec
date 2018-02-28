@@ -160,7 +160,7 @@ tokenToHtml token =
                 [ style
                     [ display
                     , pre
-                    , ( "color", "yellow" )
+                    , ( "color", "cyan" )
                     ]
                 ]
                 [ text (":" ++ name) ]
