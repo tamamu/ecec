@@ -198,4 +198,10 @@ highlight src =
                 (List.map tokenToHtml tokens)
 
         Err _ ->
-            text src
+            span
+                [ style
+                    [ ( "display", "inline" )
+                    , ( "white-space", "pre" )
+                    ]
+                ]
+                [ text src ]
