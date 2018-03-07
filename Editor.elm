@@ -1,14 +1,19 @@
-module Main exposing (..)
+module Editor
+    exposing
+        ( Model
+        , Msg
+        , init
+        , model
+        , render
+        , subscriptions
+        , update
+        )
 
 import Char exposing (fromCode)
-import Css exposing (..)
-import Css.Colors exposing (..)
-import Css.Foreign exposing (global, selector)
 import Dom exposing (..)
-import Html
-import Html.Styled exposing (..)
-import Html.Styled.Attributes exposing (css, defaultValue, id, value)
-import Html.Styled.Events as Events exposing (on, onBlur, onClick, onFocus, onWithOptions)
+import Html exposing (..)
+import Html.Attributes exposing (defaultValue, id, style, value)
+import Html.Events as Events exposing (on, onBlur, onClick, onFocus, onWithOptions)
 import Json.Decode as Json
 import LispHighlight exposing (highlight)
 import List.Extra exposing (getAt)
@@ -450,20 +455,25 @@ update msg model =
 
 {-| View
 -}
+render : Model -> Html Msg
+render model =
+    view model
+
+
 view : Model -> Html Msg
 view model =
     let
         rangeDisplay =
             if model.isSelected then
-                display block
+                ( "display", "block" )
             else
-                display none
+                ( "display", "none" )
 
         caretDisplay =
             if model.isFocused then
-                visibility visible
+                ( "visibility", "visible" )
             else
-                visibility hidden
+                ( "visibility", "hidden" )
 
         currentLine =
             Maybe.withDefault "" <| List.Extra.getAt model.caretPos.row model.content
@@ -487,9 +497,9 @@ view model =
             fromCodePoints <| List.take rangeLength <| List.drop rangeLeft codePoints
     in
     div
-        [ css
-            [ margin (px 32)
-            , fontFamily monospace
+        [ style
+            [ ( "margin", "32px" )
+            , ( "font-family", "monospace" )
             ]
         ]
         [ textarea
@@ -501,36 +511,36 @@ view model =
             , defaultValue ""
             , value ""
             , id model.id
-            , css
-                [ position absolute
-                , width (px 0)
-                , height (px 0)
-                , outline zero
-                , margin zero
-                , padding zero
-                , border (px 0)
-                , zIndex (int 0)
-                , top (Css.em <| toFloat model.caretPos.row)
-                , left (Css.em <| toFloat model.caretPos.col)
+            , style
+                [ ( "position", "absolute" )
+                , ( "width", "0px" )
+                , ( "height", "0px" )
+                , ( "outline", "0" )
+                , ( "margin", "0" )
+                , ( "padding", "0" )
+                , ( "border", "0px" )
+                , ( "z-index", "0" )
+                , ( "top", toString model.caretPos.row ++ "em" )
+                , ( "left", toString model.caretPos.col ++ "em" )
                 ]
             ]
             []
-        , div [ css [ displayFlex ] ]
+        , div [ style [ ( "display", "flex" ) ] ]
             [ div
-                [ css
-                    [ backgroundColor gray
-                    , border3 (px 1) solid black
-                    , borderRight (px 0)
-                    , paddingRight (px 10)
+                [ style
+                    [ ( "background-color", "gray" )
+                    , ( "border", "1px solid black" )
+                    , ( "border-right", "0" )
+                    , ( "padding-right", "10px" )
                     ]
                 ]
               <|
                 List.map
                     (\i ->
                         span
-                            [ css
-                                [ display block
-                                , height (Css.em 1)
+                            [ style
+                                [ ( "display", "block" )
+                                , ( "height", "1em" )
                                 ]
                             ]
                             [ text <| toString i ]
@@ -539,51 +549,51 @@ view model =
                     List.range 1 <|
                         List.length model.content
             , div
-                [ css
-                    [ display block
-                    , border3 (px 1) solid black
-                    , width (Css.em 30)
-                    , height (Css.em <| toFloat <| List.length model.content)
-                    , cursor text_
+                [ style
+                    [ ( "display", "block" )
+                    , ( "border", "1px solid black" )
+                    , ( "width", "30em" )
+                    , ( "height", (toString <| List.length model.content) ++ "em" )
+                    , ( "cursor", "text" )
                     ]
                 , onClick (FocusOn model.id)
                 ]
                 [ span
-                    [ css
-                        [ position absolute
+                    [ style
+                        [ ( "position", "absolute" )
                         , rangeDisplay
                         ]
                     ]
                     [ span
-                        [ css
-                            [ visibility hidden
-                            , whiteSpace Css.pre
+                        [ style
+                            [ ( "visibility", "hidden" )
+                            , ( "white-space", "pre" )
                             ]
                         ]
                         [ text rangeLeftText ]
                     , span
-                        [ css
-                            [ opacity (Css.num 0.5)
-                            , backgroundColor gray
-                            , whiteSpace Css.pre
+                        [ style
+                            [ ( "opacity", "0.5" )
+                            , ( "background-color", "gray" )
+                            , ( "white-space", "pre" )
                             ]
                         ]
                         [ text rangeInnerText ]
                     ]
-                , span [ css [ position absolute ] ]
+                , span [ style [ ( "position", "absolute" ) ] ]
                     [ span
-                        [ css
-                            [ visibility hidden
-                            , whiteSpace Css.pre
+                        [ style
+                            [ ( "visibility", "hidden" )
+                            , ( "white-space", "pre" )
                             ]
                         ]
                         [ text caretText ]
                     , span
-                        [ css
-                            [ display inlineBlock
+                        [ style
+                            [ ( "display", "inline-block" )
                             , caretDisplay
-                            , property "animation" "blink .5s alternate infinite ease-in"
-                            , transform (translateY (Css.em <| toFloat model.caretPos.row))
+                            , ( "animation", "blink .5s alternate infinite ease-in" )
+                            , ( "transform", "translateY(" ++ toString model.caretPos.row ++ "em)" )
                             ]
                         ]
                         [ text "|" ]
@@ -592,13 +602,13 @@ view model =
                     List.map
                         (\s ->
                             div
-                                [ css
-                                    [ display block
-                                    , width (Css.em 30)
-                                    , height (Css.em 1)
+                                [ style
+                                    [ ( "display", "block" )
+                                    , ( "width", "30em" )
+                                    , ( "height", "1em" )
                                     ]
                                 ]
-                                [ fromUnstyled (highlight s) ]
+                                [ highlight s ]
                         )
                         model.content
                 ]
@@ -609,10 +619,11 @@ view model =
         ]
 
 
-main =
-    Html.program
-        { view = view >> toUnstyled
-        , update = update
-        , subscriptions = \_ -> Sub.none
-        , init = ( model, Cmd.none )
-        }
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.none
+
+
+init : Cmd m
+init =
+    Cmd.none
