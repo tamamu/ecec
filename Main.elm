@@ -510,6 +510,8 @@ view model =
                 , padding zero
                 , border (px 0)
                 , zIndex (int 0)
+                , top (Css.em <| toFloat model.caretPos.row)
+                , left (Css.em <| toFloat model.caretPos.col)
                 ]
             ]
             []
