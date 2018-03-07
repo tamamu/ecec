@@ -502,7 +502,8 @@ view model =
             , ( "font-family", "monospace" )
             ]
         ]
-        [ textarea
+        [ stylesheet
+        , textarea
             [ onPaste Insert
             , onKeyDown KeyDown
             , onCompositionEnd Insert
@@ -617,6 +618,22 @@ view model =
         , text ","
         , text <| toString model.caretPos
         ]
+
+
+stylesheet : Html a
+stylesheet =
+    Html.node "style"
+        []
+        [ Html.text """
+    @keyframes blink {
+      from {
+        opacity: 1;
+      }
+      to {
+        opacity: 0;
+      }
+    }
+""" ]
 
 
 subscriptions : Model -> Sub Msg
