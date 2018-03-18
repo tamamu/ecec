@@ -104,22 +104,31 @@ type alias Model =
     , caretPos : CaretPosition
     , isSelected : Bool
     , rangeFrom : Int
+    , tabSize : Int
+    , tabStyle : TabStyle
     }
+
+
+type TabStyle
+    = Spaces
+    | Tab
 
 
 type alias CaretPosition =
     { col : Int, row : Int }
 
 
-model : Model
-model =
-    { id = "editor"
+model : String -> Model
+model id =
+    { id = id
     , isFocused = False
     , content = [ "" ]
     , lastKey = ""
     , caretPos = { col = 0, row = 0 }
     , isSelected = False
     , rangeFrom = 0
+    , tabSize = 4
+    , tabStyle = Tab
     }
 
 
@@ -201,7 +210,10 @@ update msg model =
     in
     case msg of
         FocusOn id ->
-            model ! [ Task.attempt FocusResult (Dom.focus id) ]
+            if model.id == id then
+                model ! [ Task.attempt FocusResult (Dom.focus id) ]
+            else
+                model ! []
 
         FocusResult result ->
             case result of
@@ -380,7 +392,17 @@ update msg model =
                     model ! []
 
                 "Tab" ->
-                    model ! []
+                    update
+                        (Insert
+                            (case model.tabStyle of
+                                Spaces ->
+                                    String.repeat model.tabSize " "
+
+                                Tab ->
+                                    "\t"
+                            )
+                        )
+                        model
 
                 "Escape" ->
                     model ! []
@@ -495,11 +517,13 @@ view model =
 
         rangeInnerText =
             fromCodePoints <| List.take rangeLength <| List.drop rangeLeft codePoints
+
+        tabSize =
+            ( "-moz-tab-size", toString <| model.tabSize )
     in
     div
         [ style
-            [ ( "margin", "32px" )
-            , ( "font-family", "monospace" )
+            [ ( "font-family", "monospace" )
             ]
         ]
         [ stylesheet
@@ -523,6 +547,7 @@ view model =
                 , ( "z-index", "0" )
                 , ( "top", toString model.caretPos.row ++ "em" )
                 , ( "left", toString model.caretPos.col ++ "em" )
+                , tabSize
                 ]
             ]
             []
@@ -542,6 +567,7 @@ view model =
                             [ style
                                 [ ( "display", "block" )
                                 , ( "height", "1em" )
+                                , tabSize
                                 ]
                             ]
                             [ text <| toString i ]
@@ -569,6 +595,7 @@ view model =
                         [ style
                             [ ( "visibility", "hidden" )
                             , ( "white-space", "pre" )
+                            , tabSize
                             ]
                         ]
                         [ text rangeLeftText ]
@@ -577,6 +604,7 @@ view model =
                             [ ( "opacity", "0.5" )
                             , ( "background-color", "gray" )
                             , ( "white-space", "pre" )
+                            , tabSize
                             ]
                         ]
                         [ text rangeInnerText ]
@@ -586,6 +614,7 @@ view model =
                         [ style
                             [ ( "visibility", "hidden" )
                             , ( "white-space", "pre" )
+                            , tabSize
                             ]
                         ]
                         [ text caretText ]
@@ -594,7 +623,7 @@ view model =
                             [ ( "display", "inline-block" )
                             , caretDisplay
                             , ( "animation", "blink .5s alternate infinite ease-in" )
-                            , ( "transform", "translateY(" ++ toString model.caretPos.row ++ "em)" )
+                            , ( "transform", "translateX(-4px) translateY(" ++ toString model.caretPos.row ++ "em)" )
                             ]
                         ]
                         [ text "|" ]
@@ -607,6 +636,7 @@ view model =
                                     [ ( "display", "block" )
                                     , ( "width", "30em" )
                                     , ( "height", "1em" )
+                                    , tabSize
                                     ]
                                 ]
                                 [ highlight s ]
@@ -614,9 +644,11 @@ view model =
                         model.content
                 ]
             ]
-        , text <| toString model.lastKey
-        , text ","
-        , text <| toString model.caretPos
+        , div [ style [ ( "display", "none" ) ] ]
+            [ text <| toString model.lastKey
+            , text ","
+            , text <| toString model.caretPos
+            ]
         ]
 
 
