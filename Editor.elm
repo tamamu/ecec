@@ -103,7 +103,7 @@ type alias Model =
     , lastKey : String
     , caretPos : CaretPosition
     , isSelected : Bool
-    , rangeFrom : Int
+    , rangeFrom : CaretPosition
     , tabSize : Int
     , tabStyle : TabStyle
     }
@@ -126,7 +126,7 @@ model id =
     , lastKey = ""
     , caretPos = { col = 0, row = 0 }
     , isSelected = False
-    , rangeFrom = 0
+    , rangeFrom = { col = 0, row = 0 }
     , tabSize = 4
     , tabStyle = Tab
     }
@@ -202,6 +202,89 @@ updateContent src row fun =
         List.indexedMap (,) src
 
 
+rangeContent : List String -> CaretPosition -> CaretPosition -> List String
+rangeContent src from to =
+    let
+        fromSmaller =
+            from.row < to.row || from.col < to.col
+    in
+    if fromSmaller then
+        let
+            rowStart =
+                from.row
+
+            rowEnd =
+                to.row
+
+            colStart =
+                from.col
+
+            colEnd =
+                to.col
+
+            rows =
+                List.drop rowStart src |> List.take rowEnd
+
+            last =
+                List.length rows - 1
+        in
+        List.map
+            (\t ->
+                let
+                    ( i, s ) =
+                        t
+                in
+                if i == 0 then
+                    String.dropLeft colStart s
+                else if i == last then
+                    String.left colEnd s
+                else
+                    s
+            )
+        <|
+            List.indexedMap (,) rows
+    else
+        let
+            rowStart =
+                to.row
+
+            rowEnd =
+                from.row
+
+            colStart =
+                to.col
+
+            colEnd =
+                from.col
+
+            rows =
+                List.drop rowStart src |> List.take rowEnd
+
+            last =
+                List.length rows - 1
+        in
+        List.map
+            (\t ->
+                let
+                    ( i, s ) =
+                        t
+                in
+                if i == 0 then
+                    String.dropLeft colStart s
+                else if i == last then
+                    String.left colEnd s
+                else
+                    s
+            )
+        <|
+            List.indexedMap (,) rows
+
+
+replaceRange : List String -> CaretPosition -> CaretPosition -> String -> List String
+replaceRange src from to data =
+    []
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     let
@@ -233,13 +316,13 @@ update msg model =
             if model.isSelected then
                 let
                     rangeLeft =
-                        min model.rangeFrom model.caretPos.col
-
-                    rangeRight =
-                        max model.rangeFrom model.caretPos.col
+                        if model.rangeFrom.row < model.caretPos.row || model.rangeFrom.col < model.caretPos.col then
+                            model.rangeFrom.col
+                        else
+                            model.caretPos.col
                 in
                 { model
-                    | content = updateContent model.content caretPos.row <| stringReplace data rangeLeft rangeRight
+                    | content = replaceRange model.content model.rangeFrom caretPos data
                     , caretPos = { caretPos | col = rangeLeft }
                     , isSelected = False
                 }
@@ -327,7 +410,7 @@ update msg model =
                     moveCaretLeft { row = model.caretPos.row, col = min model.caretPos.col (List.length currentLine) }
 
                 rangeLength =
-                    abs (caretPos.col - model.rangeFrom)
+                    abs (caretPos.col - model.rangeFrom.col)
             in
             { model
                 | caretPos = caretPos
@@ -341,7 +424,7 @@ update msg model =
                     moveCaretRight model.caretPos (charsLength <| Maybe.withDefault "" <| List.Extra.getAt model.caretPos.row model.content)
 
                 rangeLength =
-                    abs (caretPos.col - model.rangeFrom)
+                    abs (caretPos.col - model.rangeFrom.col)
             in
             { model
                 | caretPos = caretPos
@@ -416,7 +499,10 @@ update msg model =
                 "ArrowLeft" ->
                     let
                         rangeLength =
-                            abs (model.rangeFrom - model.caretPos.col)
+                            abs (model.rangeFrom.col - model.caretPos.col)
+
+                        rangeFrom =
+                            model.rangeFrom
                     in
                     if shift then
                         if model.isSelected then
@@ -425,13 +511,13 @@ update msg model =
                             update MoveLeft
                                 { model
                                     | isSelected = True
-                                    , rangeFrom = model.caretPos.col
+                                    , rangeFrom = { rangeFrom | col = model.caretPos.col }
                                 }
                     else if model.isSelected then
                         update MoveLeft
                             { model
                                 | isSelected = False
-                                , caretPos = { caretPos | col = min model.rangeFrom model.caretPos.col + 1 }
+                                , caretPos = { caretPos | col = min model.rangeFrom.col model.caretPos.col + 1 }
                             }
                     else
                         update MoveLeft model
@@ -439,7 +525,10 @@ update msg model =
                 "ArrowRight" ->
                     let
                         rangeLength =
-                            abs (model.rangeFrom - model.caretPos.col)
+                            abs (model.rangeFrom.col - model.caretPos.col)
+
+                        rangeFrom =
+                            model.rangeFrom
                     in
                     if shift then
                         if model.isSelected then
@@ -448,13 +537,13 @@ update msg model =
                             update MoveRight
                                 { model
                                     | isSelected = True
-                                    , rangeFrom = model.caretPos.col
+                                    , rangeFrom = { rangeFrom | col = model.caretPos.col }
                                 }
                     else if model.isSelected then
                         update MoveRight
                             { model
                                 | isSelected = False
-                                , caretPos = { caretPos | col = max model.rangeFrom model.caretPos.col - 1 }
+                                , caretPos = { caretPos | col = max model.rangeFrom.col model.caretPos.col - 1 }
                             }
                     else
                         update MoveRight model
@@ -504,10 +593,10 @@ view model =
             toCodePoints currentLine
 
         rangeLeft =
-            min model.rangeFrom model.caretPos.col
+            min model.rangeFrom.col model.caretPos.col
 
         rangeLength =
-            abs (model.rangeFrom - model.caretPos.col)
+            abs (model.rangeFrom.col - model.caretPos.col)
 
         caretText =
             fromCodePoints <| List.take model.caretPos.col codePoints
