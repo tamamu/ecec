@@ -280,9 +280,62 @@ rangeContent src from to =
             List.indexedMap (,) rows
 
 
+desc : CaretPosition -> CaretPosition -> ( CaretPosition, CaretPosition )
+desc a b =
+    if a.row == b.row then
+        if a.col <= b.col then
+            ( a, b )
+        else
+            ( b, a )
+    else if a.row < b.row then
+        ( a, b )
+    else
+        ( b, a )
+
+
 replaceRange : List String -> CaretPosition -> CaretPosition -> String -> List String
-replaceRange src from to data =
-    []
+replaceRange src from_ to_ data =
+    let
+        pair =
+            desc from_ to_
+
+        from =
+            Tuple.first pair
+
+        to =
+            Tuple.second pair
+
+        lineLength =
+            to.row - from.row
+
+        lines =
+            String.lines data
+
+        currentLine =
+            Maybe.withDefault "" <| getAt from.row src
+
+        lastLine =
+            Maybe.withDefault "" <| getAt to.row src
+
+        top =
+            if lineLength > 1 then
+                Maybe.withDefault "" <| List.head lines
+            else
+                (Maybe.withDefault "" <| List.head lines) ++ String.dropLeft (to.col + 1) lastLine
+
+        inner =
+            if lineLength > 2 then
+                List.take (lineLength - 2) <| List.drop 1 lines
+            else
+                []
+
+        bottom =
+            if lineLength > 1 then
+                [ Maybe.withDefault "" (List.head <| List.drop (lineLength - 1) lines) ++ String.right to.col lastLine ]
+            else
+                []
+    in
+    List.concat <| List.take from.row src :: [ String.left from.col currentLine ++ top ] :: inner :: bottom :: [ List.drop (to.row + 1) src ]
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
